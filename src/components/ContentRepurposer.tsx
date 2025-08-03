@@ -41,19 +41,15 @@ export default function ContentJournal({ user }: ContentJournalProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 p-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-white">
+      <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800">ech0</h1>
-            <p className="text-gray-600">Your creative journal</p>
-          </div>
+        <div className="flex justify-between items-center py-4 px-4">
+          <h1 className="text-lg font-medium text-gray-900">Notes</h1>
           <button
             onClick={signOut}
-            className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg shadow hover:shadow-md transition-shadow"
+            className="text-blue-500 hover:text-blue-600 text-sm"
           >
-            <LogOut className="w-4 h-4" />
             Sign Out
           </button>
         </div>
@@ -61,30 +57,31 @@ export default function ContentJournal({ user }: ContentJournalProps) {
         {/* Smart Idea Input */}
         <SmartIdeaInput user={user} onIdeaSaved={fetchEntries} />
 
-        {/* Ideas List */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <FileText className="w-5 h-5 text-blue-500" />
-            <h2 className="text-xl font-semibold">Your Ideas</h2>
-          </div>
-
+        {/* Notes List */}
+        <div className="px-4">
           {entries.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <Lightbulb className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p>No ideas yet. Capture your first one above!</p>
+            <div className="text-center py-16 text-gray-400">
+              <p>No notes yet.</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="divide-y divide-gray-100">
               {entries.map((entry) => (
                 <div
                   key={entry.id}
-                  className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="py-3 hover:bg-gray-50 transition-colors cursor-pointer"
                 >
-                  <div className="text-sm text-gray-500 mb-2">
-                    {new Date(entry.created_at).toLocaleDateString()} • {entry.type}
+                  <div className="text-sm text-gray-400 mb-1">
+                    {new Date(entry.created_at).toLocaleDateString('en-US', { 
+                      month: 'short', 
+                      day: 'numeric',
+                      year: new Date(entry.created_at).getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+                    })}
                   </div>
-                  <div className="text-gray-800">
-                    {entry.content}
+                  <div className="text-gray-900 text-sm leading-relaxed">
+                    {entry.content.length > 100 
+                      ? entry.content.substring(0, 100) + '...' 
+                      : entry.content
+                    }
                   </div>
                 </div>
               ))}

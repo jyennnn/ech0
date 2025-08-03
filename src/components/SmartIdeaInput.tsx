@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import { Brain, Lightbulb, Bell } from 'lucide-react'
+import { Brain, Lightbulb, Bell, Send } from 'lucide-react'
 
 interface SmartIdeaInputProps {
   user: User
@@ -13,9 +13,6 @@ interface SmartIdeaInputProps {
 
 export default function SmartIdeaInput({ user, onIdeaSaved }: SmartIdeaInputProps) {
   const [content, setContent] = useState('')
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [sparks, setSparks] = useState<string[]>([])
-  const [sparkHistory, setSparkHistory] = useState<string[]>([])
   const [backgroundWords, setBackgroundWords] = useState<string[]>([])
   const [backgroundWordHistory, setBackgroundWordHistory] = useState<string[]>([])
   const [hasNewBackgroundWords, setHasNewBackgroundWords] = useState(false)
@@ -23,9 +20,11 @@ export default function SmartIdeaInput({ user, onIdeaSaved }: SmartIdeaInputProp
   const [showConversation, setShowConversation] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [conversation, setConversation] = useState<Array<{role: 'user' | 'assistant', content: string}>>([])
+  const [conversationInput, setConversationInput] = useState('')
+  const [isConversationLoading, setIsConversationLoading] = useState(false)
   
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const analysisTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const backgroundTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const lastAnalyzedContent = useRef('')
   const lastBackgroundContent = useRef('')
@@ -40,9 +39,6 @@ export default function SmartIdeaInput({ user, onIdeaSaved }: SmartIdeaInputProp
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current)
     }
-    if (analysisTimeoutRef.current) {
-      clearTimeout(analysisTimeoutRef.current)
-    }
     if (backgroundTimeoutRef.current) {
       clearTimeout(backgroundTimeoutRef.current)
     }
@@ -52,19 +48,6 @@ export default function SmartIdeaInput({ user, onIdeaSaved }: SmartIdeaInputProp
       setIsTyping(false)
     }, 1000)
     
-    // Analyze content after 2 seconds of no typing (if content changed)
-    if (value.trim().length > 30) {
-      const contentChanged = Math.abs(value.length - lastAnalyzedContent.current.length) > 15 || 
-                             !lastAnalyzedContent.current || 
-                             value.toLowerCase() !== lastAnalyzedContent.current.toLowerCase()
-      
-      if (contentChanged) {
-        analysisTimeoutRef.current = setTimeout(() => {
-          analyzeContent(value)
-          lastAnalyzedContent.current = value
-        }, 2000)
-      }
-    }
     
     // Background word generation with smart cost optimization
     if (value.trim().length > 100) {
@@ -154,86 +137,6 @@ export default function SmartIdeaInput({ user, onIdeaSaved }: SmartIdeaInputProp
     }
   }
 
-  const analyzeContent = async (text: string) => {
-    if (!text.trim() || text.length < 30) return
-    
-    console.log('=== Client Debug Start ===')
-    setIsAnalyzing(true)
-    // Clear old sparks immediately to show change is happening
-    setSparks([])
-    
-    try {
-      // Use sliding window approach for content analysis
-      const recentContent = getRecentContent(text, lastAnalyzedContent.current)
-      console.log('1. Content for analysis:', {
-        originalLength: text.length,
-        recentContentLength: recentContent.length,
-        sparkHistoryLength: sparkHistory.length,
-        lastSixSparks: sparkHistory.slice(-6)
-      })
-      
-      const requestBody = { 
-        content: recentContent,
-        questionHistory: sparkHistory.slice(-6) // Last 6 sparks for context
-      }
-      console.log('2. Request payload:', requestBody)
-      
-      console.log('3. Making fetch request...')
-      const response = await fetch('/api/ai/analyze', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      })
-
-      console.log('4. Response received:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('5. Response not ok:', errorText)
-        throw new Error(`Failed to analyze content: ${response.status} ${response.statusText}`)
-      }
-
-      console.log('6. Parsing response JSON...')
-      const data = await response.json()
-      console.log('7. Response data:', data)
-      
-      if (data.questions && Array.isArray(data.questions)) {
-        console.log('8. Valid sparks received:', data.questions)
-        // Add to spark history to avoid repetition
-        setSparkHistory(prev => [...prev, ...data.questions].slice(-10)) // Keep last 10
-        
-        // Add a small delay to make the change more noticeable
-        setTimeout(() => {
-          setSparks(data.questions)
-          console.log('9. Sparks set in state')
-        }, 500)
-      } else {
-        console.log('8. Invalid sparks format:', data)
-      }
-    } catch (error) {
-      console.error('=== Client Error ===')
-      console.error('Error type:', error?.constructor?.name)
-      console.error('Error message:', error instanceof Error ? error.message : String(error))
-      console.error('Full error:', error)
-      console.error('=== End Client Error ===')
-      
-      // Fallback spark ideas if API fails
-      setSparks([
-        "patterns",
-        "timing", 
-        "perspective"
-      ])
-    } finally {
-      setIsAnalyzing(false)
-      console.log('=== Client Debug End ===')
-    }
-  }
 
 
 
@@ -242,12 +145,7 @@ export default function SmartIdeaInput({ user, onIdeaSaved }: SmartIdeaInputProp
 
     setIsSaving(true)
     
-    // Combine the original idea with spark ideas
-    const fullContent = [
-      content,
-      sparks.length > 0 ? '\n\n--- Spark Ideas ---' : '',
-      ...sparks.map(q => `• ${q}`)
-    ].filter(Boolean).join('\n')
+    const fullContent = content
 
     const { error } = await supabase
       .from('journal_entries')
@@ -260,8 +158,6 @@ export default function SmartIdeaInput({ user, onIdeaSaved }: SmartIdeaInputProp
 
     if (!error) {
       setContent('')
-      setSparks([])
-      setSparkHistory([])
       lastAnalyzedContent.current = ''
       onIdeaSaved()
     }
@@ -272,118 +168,161 @@ export default function SmartIdeaInput({ user, onIdeaSaved }: SmartIdeaInputProp
   const handleNotificationClick = () => {
     setHasNewBackgroundWords(false)
     setShowConversation(true)
+    // Start conversation if empty
+    if (conversation.length === 0) {
+      startConversation()
+    }
   }
 
-  // Cleanup timeouts
+  // Start conversation with AI
+  const startConversation = async () => {
+    if (!content.trim() || content.length < 30) return
+    
+    setIsConversationLoading(true)
+    
+    try {
+      const response = await fetch('/api/ai/conversation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          originalContent: content,
+          backgroundWords: backgroundWords,
+          conversation: []
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.response) {
+          setConversation([{
+            role: 'assistant',
+            content: data.response
+          }])
+        }
+      }
+    } catch (error) {
+      console.error('Failed to start conversation:', error)
+      setConversation([{
+        role: 'assistant',
+        content: "Hey, I'm really curious about what you've been thinking! There's definitely something here worth exploring. What's the part that you're most excited or uncertain about?"
+      }])
+    } finally {
+      setIsConversationLoading(false)
+    }
+  }
+
+  // Send message in conversation
+  const sendMessage = async () => {
+    if (!conversationInput.trim() || isConversationLoading) return
+    
+    const userMessage = conversationInput.trim()
+    setConversationInput('')
+    
+    // Add user message
+    const newConversation = [...conversation, { role: 'user' as const, content: userMessage }]
+    setConversation(newConversation)
+    setIsConversationLoading(true)
+    
+    try {
+      const response = await fetch('/api/ai/conversation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          originalContent: content,
+          backgroundWords: backgroundWords,
+          conversation: newConversation
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.response) {
+          setConversation([...newConversation, {
+            role: 'assistant',
+            content: data.response
+          }])
+        }
+      }
+    } catch (error) {
+      console.error('Failed to send message:', error)
+      setConversation([...newConversation, {
+        role: 'assistant',
+        content: "Hmm, my brain's a bit scrambled right now. Can you say that again? I don't want to miss what you're thinking!"
+      }])
+    } finally {
+      setIsConversationLoading(false)
+    }
+  }
+
+  // Cleanup timeouts  
   useEffect(() => {
     return () => {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
-      if (analysisTimeoutRef.current) clearTimeout(analysisTimeoutRef.current)
       if (backgroundTimeoutRef.current) clearTimeout(backgroundTimeoutRef.current)
     }
   }, [])
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Brain className="w-5 h-5 text-purple-500" />
-        <h2 className="text-xl font-semibold">Idea Explorer</h2>
-        
-        {/* Notification Badge */}
+    <div className="border-b border-gray-100 pb-4 mb-6">
+      <div className="flex items-center justify-between mb-3">
+        {/* Minimal notification badge */}
+        <div className="flex-1"></div>
         {hasNewBackgroundWords && (
-          <div 
+          <button 
             onClick={handleNotificationClick}
-            className="relative cursor-pointer group"
-          >
-            <Bell className="w-5 h-5 text-orange-500 animate-pulse hover:text-orange-600 transition-colors" />
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-              New insights ready!
-            </div>
-          </div>
-        )}
-        
-        {isGeneratingBackground && (
-          <div className="flex items-center gap-1 text-sm text-orange-500">
-            <div className="animate-spin">🔍</div>
-            <span>Discovering insights...</span>
-          </div>
-        )}
-        
-        {isAnalyzing && (
-          <div className="flex items-center gap-1 text-sm text-purple-500">
-            <div className="animate-pulse">🧠</div>
-            <span>AI is generating spark ideas...</span>
-          </div>
-        )}
-        {isTyping && (
-          <div className="text-sm text-gray-500">
-            <span className="animate-pulse">✍️ Typing...</span>
-          </div>
+            className="w-2 h-2 bg-blue-500 rounded-full hover:bg-blue-600 transition-colors"
+            title="New insights ready"
+          />
         )}
       </div>
       
       <textarea
         value={content}
         onChange={(e) => handleContentChange(e.target.value)}
-        placeholder="Write your thoughts, ideas, or observations here... AI will generate related words and concepts to spark new thinking."
-        className="w-full h-32 p-4 border border-gray-200 rounded-lg resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+        placeholder="What's on your mind?"
+        className="w-full h-24 p-0 border-none resize-none focus:outline-none text-lg placeholder-gray-400"
+        style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
       />
       
-      {/* Spark Ideas */}
-      {sparks.length > 0 && (
-        <div className="mt-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-100">
-          <div className="flex items-center gap-2 mb-3">
-            <Lightbulb className="w-4 h-4 text-purple-500" />
-            <span className="text-sm font-semibold text-purple-700">Spark Ideas</span>
-          </div>
-          
-          <div className="flex flex-wrap gap-2">
-            {sparks.map((spark, index) => (
-              <div
-                key={index}
-                className="px-3 py-2 bg-white rounded-full shadow-sm border border-purple-200 hover:border-purple-300 transition-colors"
-              >
-                <p className="text-sm text-gray-700 font-medium">{spark}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
       
-      <button
-        onClick={saveIdea}
-        disabled={!content.trim() || isSaving}
-        className="mt-4 flex items-center gap-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white py-2 px-6 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:from-purple-600 hover:to-blue-600 transition-all"
-      >
-        <Lightbulb className="w-4 h-4" />
-        {isSaving ? 'Saving...' : 'Save Idea & Sparks'}
-      </button>
+      {content.trim() && (
+        <button
+          onClick={saveIdea}
+          disabled={isSaving}
+          className="mt-2 text-blue-500 hover:text-blue-600 text-sm disabled:opacity-50"
+        >
+          {isSaving ? 'Saving...' : 'Save'}
+        </button>
+      )}
       
       {/* Conversation Modal */}
       {showConversation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl h-3/4 flex flex-col">
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Conversation with AI</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-sm border w-full max-w-lg h-96 flex flex-col">
+            <div className="p-3 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-sm font-medium text-gray-700">Chat</h3>
               <button 
                 onClick={() => setShowConversation(false)}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-400 hover:text-gray-600 text-sm"
               >
                 ✕
               </button>
             </div>
             
-            <div className="flex-1 p-4 overflow-y-auto">
+            <div className="flex-1 p-3 overflow-y-auto">
               {/* Background Words Display */}
               {backgroundWords.length > 0 && (
-                <div className="mb-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
-                  <h4 className="text-sm font-semibold text-orange-700 mb-2">Research Ideas</h4>
-                  <div className="flex flex-wrap gap-2">
+                <div className="mb-3 p-2 bg-gray-50 rounded text-xs">
+                  <div className="text-gray-500 mb-1">Related concepts:</div>
+                  <div className="flex flex-wrap gap-1">
                     {backgroundWords.map((word, index) => (
                       <span
                         key={index}
-                        className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-sm"
+                        className="px-2 py-1 bg-white text-gray-600 rounded text-xs"
                       >
                         {word}
                       </span>
@@ -392,9 +331,65 @@ export default function SmartIdeaInput({ user, onIdeaSaved }: SmartIdeaInputProp
                 </div>
               )}
               
-              <div className="text-center text-gray-500 mt-8">
-                <p>Conversation interface coming soon!</p>
-                <p className="text-sm mt-2">This will let you chat with AI about your thoughts for better clarity and perspective.</p>
+              {/* Conversation Messages */}
+              <div className="space-y-2 mb-3">
+                {conversation.length === 0 && !isConversationLoading ? (
+                  <div className="text-center text-gray-400 py-6">
+                    <p className="text-sm">Ready to chat about your ideas</p>
+                  </div>
+                ) : (
+                  <>
+                    {conversation.map((message, index) => (
+                      <div
+                        key={index}
+                        className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div
+                          className={`max-w-xs px-3 py-2 rounded-lg ${
+                            message.role === 'user'
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
+                          <p className="text-xs">{message.content}</p>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {isConversationLoading && (
+                      <div className="flex justify-start">
+                        <div className="max-w-xs px-3 py-2 rounded-lg bg-gray-100 text-gray-800">
+                          <div className="flex items-center space-x-1">
+                            <div className="animate-pulse">💭</div>
+                            <span className="text-xs">thinking...</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+            
+            {/* Conversation Input */}
+            <div className="p-3 border-t border-gray-100">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={conversationInput}
+                  onChange={(e) => setConversationInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                  placeholder="Type a message..."
+                  className="flex-1 px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:border-blue-400"
+                  disabled={isConversationLoading}
+                />
+                <button
+                  onClick={sendMessage}
+                  disabled={!conversationInput.trim() || isConversationLoading}
+                  className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 disabled:opacity-50"
+                >
+                  <Send className="w-3 h-3" />
+                </button>
               </div>
             </div>
           </div>

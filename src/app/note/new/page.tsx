@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { User } from '@supabase/supabase-js'
 import AuthComponent from '@/components/Auth'
-import NotesList from '@/components/NotesList'
+import NoteEditor from '@/components/NoteEditor'
 
-export default function Home() {
+export default function NewNotePage() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -40,5 +40,5 @@ export default function Home() {
     return <AuthComponent />
   }
 
-  return <NotesList user={user} />
+  return <NoteEditor user={user} />
 }

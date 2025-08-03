@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
 
     // Analyze conversation depth and emotional progression
     const conversationDepth = conversation.length
-    const lastUserMessage = conversation.filter((msg: any) => msg.type === 'user').slice(-1)[0]?.content || ""
+    const lastUserMessage = conversation.filter((msg: {type: string, content: string}) => msg.type === 'user').slice(-1)[0]?.content || ""
     
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
@@ -28,7 +28,7 @@ Keep it natural and conversational, like a friend excited about their creative p
           role: "user",
           content: `Original idea: "${originalContent}"
 
-${conversation.map((msg: any) => {
+${conversation.map((msg: {type: string, content: string}) => {
   const speaker = msg.type === 'ai' ? 'You' : 'Them'
   return `${speaker}: ${msg.content}`
 }).join('\n')}

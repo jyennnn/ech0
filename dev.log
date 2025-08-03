@@ -1,0 +1,67 @@
+
+> ech0@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.4.4
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.1.40:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 1171ms
+ ✓ Compiled /api/ai/visual-notes in 326ms (382 modules)
+ POST /api/ai/visual-notes 200 in 2576ms
+ ✓ Compiled /api/ai/script-generator in 159ms (384 modules)
+ POST /api/ai/script-generator 200 in 6174ms
+ ○ Compiling /note/[id] ...
+ ✓ Compiled /note/[id] in 899ms (748 modules)
+ GET /note/60af44b2-ef3a-4657-917a-6ed73c1ff6fd 200 in 1324ms
+ ✓ Compiled /_not-found in 88ms (739 modules)
+ GET /_next/static/chunks/main-app.js?v=1753917635119 404 in 203ms
+ ✓ Compiled / in 220ms (754 modules)
+ GET / 200 in 374ms
+ GET /_next/static/chunks/main-app.js?v=1753917653474 404 in 16ms
+ GET / 200 in 42ms
+ GET /_next/static/chunks/main-app.js?v=1753917655478 404 in 20ms
+ ✓ Compiled in 199ms (316 modules)
+ ✓ Compiled in 110ms (316 modules)
+ ✓ Compiled in 139ms (316 modules)
+ ✓ Compiled in 124ms (316 modules)
+ ✓ Compiled in 57ms (316 modules)
+ ✓ Compiled in 98ms (316 modules)
+ ✓ Compiled in 72ms (316 modules)
+ ✓ Compiled in 101ms (316 modules)
+ ✓ Compiled in 170ms (316 modules)
+ ✓ Compiled in 50ms (316 modules)
+ ✓ Compiled in 73ms (316 modules)
+ ✓ Compiled in 48ms (316 modules)
+ ✓ Compiled in 68ms (316 modules)
+ ✓ Compiled in 37ms (316 modules)
+ ✓ Compiled in 28ms (302 modules)
+ ✓ Compiled in 38ms (316 modules)
+ ✓ Compiled in 27ms (302 modules)
+ ✓ Compiled in 532ms (316 modules)
+ ✓ Compiled in 46ms (316 modules)
+ ✓ Compiled in 192ms (320 modules)
+ ✓ Compiled in 292ms (320 modules)
+ ✓ Compiled in 97ms (320 modules)
+ ✓ Compiled in 125ms (320 modules)
+ ✓ Compiled in 120ms (320 modules)
+ ✓ Compiled in 90ms (320 modules)
+ ✓ Compiled in 80ms (320 modules)
+ ✓ Compiled in 65ms (320 modules)
+ ✓ Compiled in 70ms (320 modules)
+ ✓ Compiled in 75ms (320 modules)
+ ✓ Compiled in 168ms (320 modules)
+ ✓ Compiled in 157ms (320 modules)
+ ✓ Compiled in 236ms (320 modules)
+ ✓ Compiled in 174ms (320 modules)
+ ✓ Compiled in 300ms (316 modules)
+ ✓ Compiled in 306ms (316 modules)
+ ✓ Compiled in 263ms (316 modules)
+ ✓ Compiled in 107ms (316 modules)
+ ✓ Compiled in 78ms (316 modules)
+ ✓ Compiled in 74ms (318 modules)
+ ✓ Compiled in 58ms (318 modules)
+ ✓ Compiled in 142ms (318 modules)
+ ✓ Compiled in 91ms (323 modules)
