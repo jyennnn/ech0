@@ -30,6 +30,9 @@ export default function NoteEditor({ user, existingNote }: NoteEditorProps) {
   const [showConversation, setShowConversation] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved')
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [conversation, setConversation] = useState<Array<{role: 'user' | 'assistant', content: string}>>([])
   const [conversationInput, setConversationInput] = useState('')
   const [isConversationLoading, setIsConversationLoading] = useState(false)
@@ -51,21 +54,121 @@ export default function NoteEditor({ user, existingNote }: NoteEditorProps) {
   
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const backgroundTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const lastAnalyzedContent = useRef('')
   const lastBackgroundContent = useRef('')
   const backgroundCharThreshold = useRef(0)
   const router = useRouter()
 
-  // Auto-save functionality
-  useEffect(() => {
-    if (!content.trim() && !title.trim()) return
-    
-    const saveTimeout = setTimeout(() => {
-      saveNote(false) // false = don't redirect after save
-    }, 2000) // Auto-save after 2 seconds of inactivity
+  // Removed localStorage complexity - React state is our local storage!
 
-    return () => clearTimeout(saveTimeout)
-  }, [content, title])
+  // Comprehensive auto-save with 4-second debounce and unsaved changes tracking
+  useEffect(() => {
+    // Skip if no note
+    if (!existingNote) {
+      return
+    }
+    
+    // Skip if empty content (don't mark as unsaved for empty notes)
+    if (!content.trim() && !title.trim()) {
+      setHasUnsavedChanges(false)
+      return
+    }
+    
+    // Mark as having unsaved changes
+    setHasUnsavedChanges(true)
+    console.log('📝 CONTENT CHANGED - Marked as unsaved')
+    
+    // Clear any existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+    
+    // Schedule save after 4 seconds of inactivity
+    saveTimeoutRef.current = setTimeout(() => {
+      console.log('💾 4-SECOND DEBOUNCE - Saving to database...')
+      saveToDatabase()
+    }, 4000) // 4 seconds as requested
+    
+    // Cleanup function
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
+    }
+  }, [content, title, existingNote])
+
+  // Force save function for immediate saves on exit scenarios
+  const forceSave = async () => {
+    if (!hasUnsavedChanges || !existingNote) return
+    
+    console.log('🚨 FORCE SAVE - Immediate save triggered')
+    
+    // Clear any pending timeouts
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+      saveTimeoutRef.current = null
+    }
+    
+    // Immediate save
+    await saveNote(false)
+  }
+
+  // Database save function
+  const saveToDatabase = async () => {
+    if (!hasUnsavedChanges || !existingNote) return
+    await saveNote(false)
+  }
+
+  // Comprehensive exit handlers for all scenarios
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        console.log('🚪 BEFOREUNLOAD - Force saving')
+        // Use synchronous save approach for beforeunload
+        if (existingNote && (content.trim() || title.trim())) {
+          // Use sendBeacon for reliable save during page unload
+          const noteTitle = title.trim() || content.substring(0, 50) + (content.length > 50 ? '...' : '')
+          const payload = JSON.stringify({
+            id: existingNote.id,
+            content: content,
+            title: noteTitle
+          })
+          
+          // Try sendBeacon first (most reliable for unload)
+          if (navigator.sendBeacon) {
+            navigator.sendBeacon('/api/note-save', payload)
+          } else {
+            // Fallback: synchronous xhr (deprecated but works for beforeunload)
+            const xhr = new XMLHttpRequest()
+            xhr.open('POST', '/api/note-save', false) // synchronous
+            xhr.setRequestHeader('Content-Type', 'application/json')
+            xhr.send(payload)
+          }
+        }
+        // Browser confirmation for unsaved changes
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && hasUnsavedChanges) {
+        console.log('👁️ TAB HIDDEN - Force saving')
+        forceSave()
+      }
+    }
+
+    // Add event listeners (no router.events in App Router)
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      // Cleanup event listeners
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [hasUnsavedChanges, existingNote])
 
   // Handle content changes and trigger background word generation
   const handleContentChange = useCallback((value: string) => {
@@ -173,44 +276,66 @@ export default function NoteEditor({ user, existingNote }: NoteEditorProps) {
     }
   }
 
-  const saveNote = async (shouldRedirect = true) => {
+  const saveNote = async (shouldRedirect = true, retryCount = 0) => {
+    // NoteEditor should only be used with existing notes now
+    if (!existingNote) {
+      console.error('NoteEditor called without existingNote - this should not happen')
+      return
+    }
+
     if (!content.trim() && !title.trim()) return
 
     setIsSaving(true)
+    // Don't show "saving" status - keep it silent like Apple Notes
     
     try {
       const noteTitle = title.trim() || content.substring(0, 50) + (content.length > 50 ? '...' : '')
       
-      if (existingNote) {
-        // Update existing note
-        const { error } = await supabase
-          .from('journal_entries')
-          .update({
-            content: content,
-            title: noteTitle
-          })
-          .eq('id', existingNote.id)
+      // Update existing note
+      const { error } = await supabase
+        .from('journal_entries')
+        .update({
+          content: content,
+          title: noteTitle
+        })
+        .eq('id', existingNote.id)
 
-        if (!error && shouldRedirect) {
-          router.push('/')
+      if (error) {
+        // Retry logic - retry up to 3 times with exponential backoff
+        if (retryCount < 3) {
+          const delay = Math.pow(2, retryCount) * 1000 // 1s, 2s, 4s
+          setTimeout(() => {
+            saveNote(shouldRedirect, retryCount + 1)
+          }, delay)
+          return
+        } else {
+          // Only show status on persistent errors
+          setSaveStatus('error')
         }
       } else {
-        // Create new note
-        const { error } = await supabase
-          .from('journal_entries')
-          .insert({
-            user_id: user.id,
-            type: 'idea',
-            content: content,
-            title: noteTitle
-          })
-
-        if (!error && shouldRedirect) {
+        // Success - clear unsaved changes flag!
+        console.log('✅ DATABASE SAVE SUCCESS')
+        setHasUnsavedChanges(false)
+        if (saveStatus === 'error') {
+          setSaveStatus('saved')
+        }
+        setLastSaved(new Date())
+        if (shouldRedirect) {
           router.push('/')
         }
       }
     } catch (error) {
-      console.error('Failed to save note:', error)
+      // Retry on network errors
+      if (retryCount < 3) {
+        const delay = Math.pow(2, retryCount) * 1000
+        setTimeout(() => {
+          saveNote(shouldRedirect, retryCount + 1)
+        }, delay)
+        return
+      } else {
+        // Only show status on persistent errors
+        setSaveStatus('error')
+      }
     } finally {
       setIsSaving(false)
     }
@@ -695,12 +820,32 @@ export default function NoteEditor({ user, existingNote }: NoteEditorProps) {
       {/* Top Navigation Bar */}
       <div className="flex justify-between items-center px-4 py-3">
         <button 
-          onClick={() => router.push('/')}
-          className="p-2 hover:bg-gray-100 rounded-md"
+          onClick={async () => {
+            await forceSave()
+            router.push('/')
+          }}
+          className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-md transition-colors"
         >
-          <Menu className="w-5 h-5 text-gray-600" />
+          <ArrowLeft className="w-5 h-5 text-gray-600" />
+          <span className="text-sm text-gray-600">Notes</span>
         </button>
         <div className="flex items-center gap-3">
+          {/* Minimal Save Status - Apple Notes style */}
+          <div className="flex items-center gap-2 text-xs">
+            {/* Only show errors - everything else is silent */}
+            {saveStatus === 'error' && (
+              <div className="flex items-center gap-1 text-red-600">
+                <div className="w-2 h-2 bg-red-600 rounded-full"></div>
+                <button 
+                  onClick={() => saveNote(false)}
+                  className="text-xs underline hover:no-underline"
+                >
+                  Retry save
+                </button>
+              </div>
+            )}
+          </div>
+          
           <button className="p-2 hover:bg-gray-100 rounded-md relative">
             <Bell className="w-5 h-5 text-gray-600" />
             {currentMode === 'notes' && hasNewBackgroundWords && (
