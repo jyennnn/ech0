@@ -87,5 +87,5 @@ export default function EditNotePage() {
     )
   }
 
-  return <NoteEditor user={user} existingNote={note} />
+  return <NoteEditor existingNote={note} />
 }

@@ -41,6 +41,7 @@ export const useSaveNote = (existingNote?: JournalEntry) => {
         }
       }
     } catch (error) {
+      console.error('Failed to save note:', error)
       if (retryCount < MAX_RETRY_ATTEMPTS) {
         const delay = Math.pow(2, retryCount) * 1000
         setTimeout(() => saveNote(title, content, shouldRedirect, retryCount + 1), delay)
