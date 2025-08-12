@@ -1,10 +1,11 @@
 import { useRef, useCallback } from 'react'
 import { TYPING_ANIMATION_SPEED, VISUAL_NOTE_PAUSE_MS } from '../constants'
+import { ContentStates, GenerationStates } from '../types'
 
 export const useVisualNotes = (
   scriptTextareaRef: React.RefObject<HTMLTextAreaElement>,
-  setContentStates: React.Dispatch<React.SetStateAction<any>>,
-  setGenerationStates: React.Dispatch<React.SetStateAction<any>>
+  setContentStates: React.Dispatch<React.SetStateAction<ContentStates>>,
+  setGenerationStates: React.Dispatch<React.SetStateAction<GenerationStates>>
 ) => {
   const typingTimeoutsRef = useRef<NodeJS.Timeout[]>([])
 
@@ -14,7 +15,7 @@ export const useVisualNotes = (
       return
     }
 
-    setGenerationStates((prev: any) => ({ ...prev, visualNotes: true }))
+    setGenerationStates((prev) => ({ ...prev, visualNotes: true }))
     
     try {
       const response = await fetch('/api/ai/visual-notes', {
@@ -31,16 +32,16 @@ export const useVisualNotes = (
         if (data.enhancedScript) {
           typeVisualNotesIntoScript(data.enhancedScript, scriptContent)
         } else {
-          setGenerationStates((prev: any) => ({ ...prev, visualNotes: false }))
+          setGenerationStates((prev) => ({ ...prev, visualNotes: false }))
         }
       } else {
         alert('Failed to generate visual notes. Please try again.')
-        setGenerationStates((prev: any) => ({ ...prev, visualNotes: false }))
+        setGenerationStates((prev) => ({ ...prev, visualNotes: false }))
       }
     } catch (error) {
       console.error('Visual notes generation failed:', error)
       alert('Failed to generate visual notes. Please try again.')
-      setGenerationStates((prev: any) => ({ ...prev, visualNotes: false }))
+      setGenerationStates((prev) => ({ ...prev, visualNotes: false }))
     }
   }, [setGenerationStates])
 
@@ -48,7 +49,7 @@ export const useVisualNotes = (
     typingTimeoutsRef.current.forEach(timeout => clearTimeout(timeout))
     typingTimeoutsRef.current = []
     
-    setGenerationStates((prev: any) => ({ ...prev, visualNotes: false }))
+    setGenerationStates((prev) => ({ ...prev, visualNotes: false }))
     
     if (scriptTextareaRef.current) {
       scriptTextareaRef.current.readOnly = false
@@ -59,7 +60,7 @@ export const useVisualNotes = (
     const finalScript = enhancedScript.trim()
     
     if (!finalScript) {
-      setGenerationStates((prev: any) => ({ ...prev, visualNotes: false }))
+      setGenerationStates((prev) => ({ ...prev, visualNotes: false }))
       return
     }
     
@@ -87,7 +88,7 @@ export const useVisualNotes = (
     
     const insertNextVisualNote = () => {
       if (noteIndex >= visualNotes.length) {
-        setGenerationStates((prev: any) => ({ ...prev, visualNotes: false }))
+        setGenerationStates((prev) => ({ ...prev, visualNotes: false }))
         if (scriptTextareaRef.current) {
           scriptTextareaRef.current.readOnly = false
         }
@@ -129,7 +130,7 @@ export const useVisualNotes = (
       const afterText = currentContent.substring(insertPosition)
       
       currentContent = beforeText + '\n'
-      setContentStates((prev: any) => ({ ...prev, script: currentContent }))
+      setContentStates((prev) => ({ ...prev, script: currentContent }))
       
       let charIndex = 0
       const visualNoteText = visualNote.content
@@ -137,7 +138,7 @@ export const useVisualNotes = (
       const typeChar = () => {
         if (charIndex < visualNoteText.length) {
           const partialVisualNote = visualNoteText.substring(0, charIndex + 1)
-          setContentStates((prev: any) => ({ ...prev, script: beforeText + '\n' + partialVisualNote + afterText }))
+          setContentStates((prev) => ({ ...prev, script: beforeText + '\n' + partialVisualNote + afterText }))
           charIndex++
           
           setTimeout(() => {

@@ -31,7 +31,7 @@ export const ScriptMode: React.FC<ScriptModeProps> = ({
       <div className="mb-6">
         <div className="text-sm text-gray-900 font-medium mb-2">Video type</div>
         <div className="text-xs text-gray-500 mb-2">
-          Examples: "60s TikTok educational", "30s Instagram emotional story", "45s YouTube tutorial", "30s LinkedIn professional tip"
+          Examples: &quot;60s TikTok educational&quot;, &quot;30s Instagram emotional story&quot;, &quot;45s YouTube tutorial&quot;, &quot;30s LinkedIn professional tip&quot;
         </div>
         <textarea
           value={contentStates.videoType}
