@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { User } from '@supabase/supabase-js'
 import AuthComponent from '@/components/Auth'
-import NoteEditor from '@/components/NoteEditor'
+import NoteEditor from '@/components/NoteEditor/index'
 import { useParams, useRouter } from 'next/navigation'
 
 interface JournalEntry {

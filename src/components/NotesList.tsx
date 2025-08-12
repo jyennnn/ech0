@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import { LogOut, Plus, Menu, Search, MoreHorizontal } from 'lucide-react'
+import { Plus, Menu, Search, MoreHorizontal } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 interface JournalEntry {
@@ -34,6 +34,11 @@ export default function NotesList({ user }: NotesListProps) {
       .from('journal_entries')
       .select('*')
       .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Failed to fetch notes:', error)
+      return
+    }
 
     if (data) {
       setNotes(data)
