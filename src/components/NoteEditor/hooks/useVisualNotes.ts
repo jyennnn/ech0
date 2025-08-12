@@ -3,7 +3,7 @@ import { TYPING_ANIMATION_SPEED, VISUAL_NOTE_PAUSE_MS } from '../constants'
 import { ContentStates, GenerationStates } from '../types'
 
 export const useVisualNotes = (
-  scriptTextareaRef: React.RefObject<HTMLTextAreaElement>,
+  scriptTextareaRef: React.RefObject<HTMLTextAreaElement | null>,
   setContentStates: React.Dispatch<React.SetStateAction<ContentStates>>,
   setGenerationStates: React.Dispatch<React.SetStateAction<GenerationStates>>
 ) => {

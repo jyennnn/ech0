@@ -1,5 +1,3 @@
-import { User } from '@supabase/supabase-js'
-
 export interface JournalEntry {
   id: string
   created_at: string
@@ -10,7 +8,6 @@ export interface JournalEntry {
 }
 
 export interface NoteEditorProps {
-  user: User
   existingNote?: JournalEntry
 }
 

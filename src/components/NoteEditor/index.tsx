@@ -12,7 +12,7 @@ import { CaptionsMode } from './modes/CaptionsMode'
 import { useSaveNote } from './hooks/useSaveNote'
 import { useVisualNotes } from './hooks/useVisualNotes'
 
-export default function NoteEditor({ user, existingNote }: NoteEditorProps) {
+export default function NoteEditor({ existingNote }: NoteEditorProps) {
   // Core content state
   const [title, setTitle] = useState(existingNote?.title || '')
   const [content, setContent] = useState(existingNote?.content || '')
@@ -41,7 +41,7 @@ export default function NoteEditor({ user, existingNote }: NoteEditorProps) {
   })
 
   const router = useRouter()
-  const scriptTextareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const scriptTextareaRef = useRef<HTMLTextAreaElement>(null)
   
   // Custom hooks
   const { saveStatus, hasUnsavedChanges, saveNote, forceSave, scheduleAutoSave } = useSaveNote(existingNote)
