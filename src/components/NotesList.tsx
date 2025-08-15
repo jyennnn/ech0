@@ -1,10 +1,5 @@
-'use client'
-
-import React, { useState, useEffect } from 'react'
-import { User } from '@supabase/supabase-js'
-import { supabase } from '@/lib/supabase'
-import { Plus, Menu, Search, MoreHorizontal } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import React from 'react'
+import Header from './layout/Header'
 
 interface JournalEntry {
   id: string
@@ -15,105 +10,17 @@ interface JournalEntry {
   tags: string[] | null
 }
 
-// Removed grouping interfaces - keeping it simple
-
 interface NotesListProps {
-  user: User
+  notes: JournalEntry[]
+  onCreateNote: () => void
+  onEditNote: (noteId: string) => void
 }
 
-export default function NotesList({ user }: NotesListProps) {
-  const [notes, setNotes] = useState<JournalEntry[]>([])
-  const router = useRouter()
-
-  useEffect(() => {
-    fetchEntries()
-  }, [])
-
-  const fetchEntries = async () => {
-    const { data, error } = await supabase
-      .from('journal_entries')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Failed to fetch notes:', error)
-      return
-    }
-
-    if (data) {
-      setNotes(data)
-    }
-  }
-
-  const signOut = async () => {
-    await supabase.auth.signOut()
-  }
-
-  const handleCreateNote = async () => {
-    try {
-      // Create new note immediately in database
-      const { data, error } = await supabase
-        .from('journal_entries')
-        .insert({
-          user_id: user.id,
-          type: 'idea',
-          title: '',
-          content: ''
-        })
-        .select()
-        .single()
-
-      if (error) {
-        console.error('Failed to create note:', error)
-        console.error('Error details:', JSON.stringify(error, null, 2))
-        return
-      }
-
-      // Navigate to the new note with its ID
-      router.push(`/note/${data.id}`)
-    } catch (error) {
-      console.error('Failed to create note:', error)
-    }
-  }
-
-  const handleEditNote = (noteId: string) => {
-    router.push(`/note/${noteId}`)
-  }
-
+export default function NotesList({ notes, onCreateNote, onEditNote }: NotesListProps) {
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-2xl mx-auto">
-        {/* Top Navigation Bar */}
-        <div className="flex justify-between items-center px-4 py-3">
-          <button className="p-2 hover:bg-gray-100 rounded-md">
-            <Menu className="w-5 h-5 text-gray-600" />
-          </button>
-          <div className="flex items-center gap-3">
-            <button className="p-2 hover:bg-gray-100 rounded-md">
-              <Search className="w-5 h-5 text-gray-600" />
-            </button>
-            <button 
-              onClick={signOut}
-              className="p-2 hover:bg-gray-100 rounded-md"
-            >
-              <MoreHorizontal className="w-5 h-5 text-gray-600" />
-            </button>
-          </div>
-        </div>
+    <div>
 
-        {/* Ideas Header */}
-        <div className="flex justify-between items-center px-4 py-2 mb-4">
-          <h1 className="text-2xl font-semibold text-gray-900">Notes</h1>
-          <div className="flex gap-2">
-            <button
-              onClick={handleCreateNote}
-              className="w-8 h-8 bg-gray-700 hover:bg-gray-800 rounded-full flex items-center justify-center transition-colors"
-              title="Create new note"
-            >
-              <Plus className="w-4 h-4 text-white" />
-            </button>
-          </div>
-        </div>
+        <Header onCreateNote={onCreateNote} />
 
         {/* Simple Notes List */}
         <div className="px-4">
@@ -121,7 +28,7 @@ export default function NotesList({ user }: NotesListProps) {
             <div className="text-center py-16 text-gray-400">
               <p className="mb-4">No notes yet.</p>
               <button
-                onClick={handleCreateNote}
+                onClick={onCreateNote}
                 className="text-blue-500 hover:text-blue-600 text-sm"
               >
                 Create your first note
@@ -132,7 +39,7 @@ export default function NotesList({ user }: NotesListProps) {
               {notes.map((note) => (
                 <div
                   key={note.id}
-                  onClick={() => handleEditNote(note.id)}
+                  onClick={() => onEditNote(note.id)}
                   className="cursor-pointer hover:bg-gray-50 rounded-lg p-4 transition-colors border border-gray-100"
                 >
                   <div className="flex items-start justify-between mb-2">
@@ -155,7 +62,6 @@ export default function NotesList({ user }: NotesListProps) {
             </div>
           )}
         </div>
-      </div>
     </div>
   )
 }

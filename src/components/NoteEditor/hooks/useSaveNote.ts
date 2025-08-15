@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/utils/supabase/client'
 import { SaveStatus, JournalEntry } from '../types'
 import { SAVE_DEBOUNCE_MS, MAX_RETRY_ATTEMPTS } from '../constants'
 

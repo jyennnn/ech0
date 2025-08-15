@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Search, MoreHorizontal } from 'lucide-react'
+import { ArrowLeft, Search, MoreHorizontal, Trash2 } from 'lucide-react'
 import { NoteEditorProps, Mode, GenerationStates, ContentStates, Captions } from './types'
 import { BUTTON_CLASSES } from './constants'
 import { TabButton } from './components/TabButton'
@@ -11,6 +11,7 @@ import { ScriptMode } from './modes/ScriptMode'
 import { CaptionsMode } from './modes/CaptionsMode'
 import { useSaveNote } from './hooks/useSaveNote'
 import { useVisualNotes } from './hooks/useVisualNotes'
+import { supabase } from '@/utils/supabase/client'
 
 export default function NoteEditor({ user, existingNote }: NoteEditorProps) {
   // Core content state
@@ -20,6 +21,7 @@ export default function NoteEditor({ user, existingNote }: NoteEditorProps) {
   // UI state
   const [currentMode, setCurrentMode] = useState<Mode>('notes')
   const [showScriptMenu, setShowScriptMenu] = useState(false)
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
   
   // Generation states - consolidated
   const [generationStates, setGenerationStates] = useState<GenerationStates>({
@@ -173,11 +175,58 @@ export default function NoteEditor({ user, existingNote }: NoteEditorProps) {
     }
   }
 
+  // Delete handler
+  const handleDeleteNote = async () => {
+    console.log('Delete button clicked', { existingNote })
+    
+    if (!existingNote?.id) {
+      console.log('No existing note ID found')
+      return
+    }
+    
+    if (!confirm('Are you sure you want to delete this note? This action cannot be undone.')) {
+      console.log('User cancelled deletion')
+      return
+    }
+
+    console.log('Attempting to delete note with ID:', existingNote.id)
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const response = await fetch('/api/note-delete', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ id: existingNote.id }),
+      })
+
+      console.log('Delete response:', response.status, response.ok)
+
+      if (response.ok) {
+        console.log('Delete successful, navigating to home')
+        router.push('/')
+      } else {
+        const errorData = await response.json()
+        console.error('Delete failed:', errorData)
+        alert('Failed to delete note. Please try again.')
+      }
+    } catch (error) {
+      console.error('Delete failed:', error)
+      alert('Failed to delete note. Please try again.')
+    }
+  }
+
   // Menu handlers
   useEffect(() => {
-    const handleClickOutside = () => {
-      if (showScriptMenu) {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (showScriptMenu && !target.closest('[data-menu="script"]')) {
         setShowScriptMenu(false)
+      }
+      if (showMoreMenu && !target.closest('[data-menu="more"]')) {
+        setShowMoreMenu(false)
       }
     }
 
@@ -185,7 +234,7 @@ export default function NoteEditor({ user, existingNote }: NoteEditorProps) {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [showScriptMenu])
+  }, [showScriptMenu, showMoreMenu])
 
   return (
     <div className="min-h-screen bg-white">
@@ -220,9 +269,33 @@ export default function NoteEditor({ user, existingNote }: NoteEditorProps) {
           <button className={BUTTON_CLASSES.secondary}>
             <Search className="w-5 h-5 text-gray-600" />
           </button>
-          <button className={BUTTON_CLASSES.secondary}>
-            <MoreHorizontal className="w-5 h-5 text-gray-600" />
-          </button>
+          <div className="relative" data-menu="more">
+            <button 
+              className={BUTTON_CLASSES.secondary}
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowMoreMenu(!showMoreMenu)
+              }}
+            >
+              <MoreHorizontal className="w-5 h-5 text-gray-600" />
+            </button>
+            {showMoreMenu && (
+              <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50 overflow-visible">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowMoreMenu(false)
+                    handleDeleteNote()
+                  }}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors rounded-md"
+                  disabled={!existingNote?.id}
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete note
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
