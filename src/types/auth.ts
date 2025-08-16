@@ -1,8 +1,6 @@
 import { User } from '@supabase/supabase-js'
 
-export interface AuthUser extends User {
-  // Add any custom auth-related properties here if needed
-}
+export type AuthUser = User;
 
 export interface LoginCredentials {
   email: string
