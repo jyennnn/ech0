@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/utils/supabase/client'
 import { SaveStatus } from '../types/common'
 import { JournalEntry } from '../types/database'
+import { noteService } from '@/services/noteService'
 
 // Save timing constants
 const SAVE_DEBOUNCE_MS = 4000        // Wait 4 seconds before auto-saving
@@ -13,7 +13,6 @@ export const useSaveNote = (existingNote?: JournalEntry) => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const router = useRouter()
-  const supabase = createClient()
 
   const saveNote = useCallback(async (title: string, content: string, shouldRedirect = true, retryCount = 0) => {
     if (!existingNote || (!content.trim() && !title.trim())) return
@@ -21,29 +20,16 @@ export const useSaveNote = (existingNote?: JournalEntry) => {
     setSaveStatus('saving')
     
     try {
-      const noteTitle = title.trim() || content.substring(0, 50) + (content.length > 50 ? '...' : '')
-      
-      const { error } = await supabase
-        .from('journal_entries')
-        .update({
-          content: content,
-          title: noteTitle
-        })
-        .eq('id', existingNote.id)
+      await noteService.saveNote({
+        id: existingNote.id,
+        title,
+        content
+      })
 
-      if (error) {
-        if (retryCount < MAX_RETRY_ATTEMPTS) {
-          const delay = Math.pow(2, retryCount) * 1000
-          setTimeout(() => saveNote(title, content, shouldRedirect, retryCount + 1), delay)
-          return
-        }
-        setSaveStatus('error')
-      } else {
-        setHasUnsavedChanges(false)
-        setSaveStatus('saved')
-        if (shouldRedirect) {
-          router.push('/')
-        }
+      setHasUnsavedChanges(false)
+      setSaveStatus('saved')
+      if (shouldRedirect) {
+        router.push('/')
       }
     } catch (error) {
       if (retryCount < MAX_RETRY_ATTEMPTS) {
@@ -52,12 +38,8 @@ export const useSaveNote = (existingNote?: JournalEntry) => {
         return
       }
       setSaveStatus('error')
-    } finally {
-      if (saveStatus === 'saving') {
-        setSaveStatus('saved')
-      }
     }
-  }, [existingNote, router, saveStatus])
+  }, [existingNote, router])
 
   const forceSave = useCallback(async (title: string, content: string) => {
     if (!hasUnsavedChanges || !existingNote) return
