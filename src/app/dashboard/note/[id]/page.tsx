@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
-import AuthComponent from '@/components/Auth'
 import NoteEditor from '@/components/NoteEditor/index'
 import { useParams, useRouter } from 'next/navigation'
 
@@ -24,6 +23,7 @@ export default function EditNotePage() {
   const params = useParams()
   const router = useRouter()
   const noteId = params.id as string
+  const supabase = createClient();
 
   useEffect(() => {
     // Get initial session
@@ -76,7 +76,7 @@ export default function EditNotePage() {
   }
 
   if (!user) {
-    return <AuthComponent />
+    router.push(`/login`)
   }
 
   if (!note) {
@@ -87,5 +87,5 @@ export default function EditNotePage() {
     )
   }
 
-  return <NoteEditor user={user} existingNote={note} />
+  return <NoteEditor user={user!} existingNote={note} />
 }
