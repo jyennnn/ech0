@@ -1,8 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
-import { SaveStatus, JournalEntry } from '../types'
-import { SAVE_DEBOUNCE_MS, MAX_RETRY_ATTEMPTS } from '../constants'
+import { SaveStatus } from '../types/common'
+import { JournalEntry } from '../types/database'
+
+// Save timing constants
+const SAVE_DEBOUNCE_MS = 4000        // Wait 4 seconds before auto-saving
+const MAX_RETRY_ATTEMPTS = 3         // Retry failed saves up to 3 times
 
 export const useSaveNote = (existingNote?: JournalEntry) => {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')

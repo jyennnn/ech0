@@ -1,5 +1,4 @@
 import React from 'react'
-import { APPLE_FONT_FAMILY, COMMON_INPUT_CLASSES } from '../constants'
 
 interface NotesModeProps {
   title: string
@@ -22,8 +21,7 @@ export const NotesMode: React.FC<NotesModeProps> = ({
         value={title}
         onChange={(e) => onTitleChange(e.target.value)}
         placeholder=""
-        className={`w-full p-0 border-none text-2xl font-bold mb-4 ${COMMON_INPUT_CLASSES}`}
-        style={{ fontFamily: APPLE_FONT_FAMILY }}
+        className="w-full p-0 border-none text-2xl font-bold mb-4 input-common font-apple"
         autoFocus
       />
       
@@ -32,8 +30,7 @@ export const NotesMode: React.FC<NotesModeProps> = ({
         value={content}
         onChange={(e) => onContentChange(e.target.value)}
         placeholder=""
-        className={`w-full min-h-[70vh] p-0 border-none resize-none text-base leading-relaxed ${COMMON_INPUT_CLASSES}`}
-        style={{ fontFamily: APPLE_FONT_FAMILY }}
+        className="w-full min-h-[70vh] p-0 border-none resize-none text-base leading-relaxed input-common font-apple"
       />
     </div>
   )
