@@ -1,12 +1,13 @@
 import Link from "next/link";
 
-export default function ErrorPage({
+export default async function ErrorPage({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  const params = await searchParams;
   const error =
-    (typeof searchParams.error === "string" ? searchParams.error : null) ||
+    (typeof params.error === "string" ? params.error : null) ||
     "Something went wrong";
 
   return (
