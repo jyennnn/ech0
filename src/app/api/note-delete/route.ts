@@ -13,24 +13,41 @@ export async function DELETE(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { id } = body
+    const { id, ids } = body
 
-    if (!id) {
-      return NextResponse.json({ error: 'Note ID is required' }, { status: 400 })
+    if (!id && !ids) {
+      return NextResponse.json({ error: 'Note ID or IDs are required' }, { status: 400 })
     }
 
-    // Delete the note from the database (RLS policy will ensure user can only delete their own notes)
-    const { data, error } = await supabase
-      .from('journal_entries')
-      .delete()
-      .eq('id', id)
-      .select()
+    // Handle single delete
+    if (id) {
+      const { data, error } = await supabase
+        .from('journal_entries')
+        .delete()
+        .eq('id', id)
+        .select()
 
-    if (error) {
-      return NextResponse.json({ error: 'Failed to delete note', details: error }, { status: 500 })
+      if (error) {
+        return NextResponse.json({ error: 'Failed to delete note', details: error }, { status: 500 })
+      }
+
+      return NextResponse.json({ success: true, data })
     }
 
-    return NextResponse.json({ success: true, data })
+    // Handle bulk delete
+    if (ids && Array.isArray(ids)) {
+      const { data, error } = await supabase
+        .from('journal_entries')
+        .delete()
+        .in('id', ids)
+        .select()
+
+      if (error) {
+        return NextResponse.json({ error: 'Failed to delete notes', details: error }, { status: 500 })
+      }
+
+      return NextResponse.json({ success: true, data, deleted_count: data.length })
+    }
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error', details: error }, { status: 500 })
   }
