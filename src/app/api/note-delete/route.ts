@@ -1,38 +1,37 @@
-import { createClient } from '@/utils/supabase/client'
+import { createClient } from '@/utils/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function DELETE(request: NextRequest) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   try {
+    // Get the authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { id } = body
 
     if (!id) {
-      console.log('No ID provided')
       return NextResponse.json({ error: 'Note ID is required' }, { status: 400 })
     }
 
-    console.log('Attempting to delete note with ID:', id)
-
-    // Delete the note from the database
+    // Delete the note from the database (RLS policy will ensure user can only delete their own notes)
     const { data, error } = await supabase
       .from('journal_entries')
       .delete()
       .eq('id', id)
       .select()
 
-    console.log('Supabase response:', { data, error })
-
     if (error) {
-      console.error('Failed to delete note:', error)
       return NextResponse.json({ error: 'Failed to delete note', details: error }, { status: 500 })
     }
 
-    console.log('Delete successful')
     return NextResponse.json({ success: true, data })
   } catch (error) {
-    console.error('Note delete API error:', error)
     return NextResponse.json({ error: 'Internal server error', details: error }, { status: 500 })
   }
 }
