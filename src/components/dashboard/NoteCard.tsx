@@ -1,19 +1,6 @@
 import React from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-
-interface JournalEntry {
-  id: string
-  created_at: string
-  type: string
-  title: string | null
-  content: string
-  tags: string[] | null
-}
-
-interface NoteCardProps {
-  note: JournalEntry
-  onClick: (noteId: string) => void
-}
+import { NoteCardProps } from '@/types/dashboard'
 
 export default function NoteCard({ note, onClick }: NoteCardProps) {
   return (

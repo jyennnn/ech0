@@ -1,7 +1,6 @@
 import React from 'react'
 import { ChevronDown, Edit3, Camera } from 'lucide-react'
-import { APPLE_FONT_FAMILY, BUTTON_CLASSES } from '../constants'
-import { ContentStates, GenerationStates } from '../types'
+import { ContentStates, GenerationStates } from '../../types/noteEditor'
 
 interface ScriptModeProps {
   title: string
@@ -37,8 +36,7 @@ export const ScriptMode: React.FC<ScriptModeProps> = ({
           value={contentStates.videoType}
           onChange={(e) => onVideoTypeChange(e.target.value)}
           placeholder="Describe your video: platform, duration, style..."
-          className="w-full p-3 border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-gray-300 text-sm bg-white"
-          style={{ fontFamily: APPLE_FONT_FAMILY }}
+          className="w-full p-3 border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-gray-300 text-sm bg-white font-apple"
           rows={3}
         />
       </div>
@@ -49,7 +47,7 @@ export const ScriptMode: React.FC<ScriptModeProps> = ({
           <button
             onClick={onGenerateFirstDraft}
             disabled={generationStates.script || !title.trim() && !content.trim()}
-            className={`flex items-center gap-2 text-sm ${BUTTON_CLASSES.primary}`}
+            className="flex items-center gap-2 text-sm btn-primary"
           >
             <Edit3 className="w-4 h-4" />
             {generationStates.script ? 'Creating...' : 'Create first draft'}

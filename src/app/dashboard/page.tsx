@@ -1,24 +1,18 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { JournalEntry } from '@/types/database'
 import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
 import { redirect, useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import NoteCard from '@/components/dashboard/NoteCard'
 
-interface JournalEntry {
-  id: string
-  created_at: string
-  type: string
-  title: string | null
-  content: string
-  tags: string[] | null
-}
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [notesLoading, setNotesLoading] = useState(true)
   const [notes, setNotes] = useState<JournalEntry[]>([])
   const supabase = createClient()
   const router = useRouter()
@@ -49,6 +43,7 @@ export default function DashboardPage() {
   }, [])
 
   const fetchEntries = async () => {
+    setNotesLoading(true)
     const { data, error } = await supabase
       .from('journal_entries')
       .select('*')
@@ -56,12 +51,14 @@ export default function DashboardPage() {
 
     if (error) {
       console.error('Failed to fetch notes:', error)
+      setNotesLoading(false)
       return
     }
 
     if (data) {
       setNotes(data)
     }
+    setNotesLoading(false)
   }
 
 
@@ -95,7 +92,7 @@ export default function DashboardPage() {
     router.push(`/dashboard/note/${noteId}`)
   }
 
-  if (loading) {
+  if (loading || notesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-xl text-foreground">Loading...</div>

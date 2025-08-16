@@ -1,13 +1,5 @@
 import { User } from '@supabase/supabase-js'
-
-export interface JournalEntry {
-  id: string
-  created_at: string
-  type: string
-  title: string | null
-  content: string
-  tags: string[] | null
-}
+import { JournalEntry } from './database'
 
 export interface NoteEditorProps {
   user: User
@@ -21,7 +13,6 @@ export interface Captions {
   tiktok: string
 }
 
-export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error'
 export type Mode = 'notes' | 'script' | 'captions'
 
 export interface GenerationStates {

@@ -1,6 +1,9 @@
 import { useRef, useCallback } from 'react'
-import { TYPING_ANIMATION_SPEED, VISUAL_NOTE_PAUSE_MS } from '../constants'
-import { ContentStates, GenerationStates } from '../types'
+import { ContentStates, GenerationStates } from '../types/noteEditor'
+
+// Visual notes timing constants
+const TYPING_ANIMATION_SPEED = 25    // 25ms between each character when typing visual notes
+const VISUAL_NOTE_PAUSE_MS = 500     // 500ms pause between visual note insertions
 
 export const useVisualNotes = (
   scriptTextareaRef: React.RefObject<HTMLTextAreaElement>,
