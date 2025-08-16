@@ -1,6 +1,8 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Edit3, Instagram, Facebook, Linkedin, Youtube, Twitter } from 'lucide-react'
-import { ContentStates, GenerationStates } from '../../types/noteEditor'
+import { Captions } from '../../types/noteEditor'
+import { aiService } from '@/services/aiService'
+import { toast } from 'sonner'
 
 // Platform-specific configurations for social media caption generation
 const PLATFORM_CONFIGS = {
@@ -29,19 +31,43 @@ const PLATFORM_CONFIGS = {
 interface CaptionsModeProps {
   title: string
   content: string
-  contentStates: ContentStates
-  generationStates: GenerationStates
-  onGenerateFirstCaption: () => void
 }
 
 export const CaptionsMode: React.FC<CaptionsModeProps> = ({
   title,
   content,
-  contentStates,
-  generationStates,
-  onGenerateFirstCaption,
 }) => {
-  const hasAnyCaptions = contentStates.captions.instagram || contentStates.captions.linkedin || contentStates.captions.x || contentStates.captions.tiktok
+  // Local state for captions functionality
+  const [captions, setCaptions] = useState<Captions>({
+    instagram: '',
+    linkedin: '',
+    x: '',
+    tiktok: ''
+  })
+  const [isGenerating, setIsGenerating] = useState(false)
+
+  const generateCaptions = async () => {
+    const fullContent = (title.trim() ? title + '\n\n' + content : content).trim()
+    if (fullContent.length < 30) {
+      toast.error('Please write more content in notes mode before generating captions.')
+      return
+    }
+
+    setIsGenerating(true)
+    
+    try {
+      const generatedCaptions = await aiService.generateCaptions(fullContent)
+      setCaptions(generatedCaptions)
+      toast.success('Captions generated successfully!')
+    } catch (error) {
+      console.error('Caption generation failed:', error)
+      toast.error('Failed to generate captions. Please try again.')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const hasAnyCaptions = captions.instagram || captions.linkedin || captions.x || captions.tiktok
 
   return (
     <div className="px-4 pb-20">
@@ -67,12 +93,12 @@ export const CaptionsMode: React.FC<CaptionsModeProps> = ({
         // Repurpose button (initial state)
         <div className="flex justify-center mb-8">
           <button
-            onClick={onGenerateFirstCaption}
-            disabled={generationStates.captions || !title.trim() && !content.trim()}
+            onClick={generateCaptions}
+            disabled={isGenerating || (!title.trim() && !content.trim())}
             className="flex items-center gap-2 text-sm px-6 py-3 btn-primary"
           >
             <Edit3 className="w-4 h-4" />
-            {generationStates.captions ? 'Repurposing...' : 'Repurpose for socials'}
+            {isGenerating ? 'Repurposing...' : 'Repurpose for socials'}
           </button>
         </div>
       ) : (
@@ -104,7 +130,7 @@ export const CaptionsMode: React.FC<CaptionsModeProps> = ({
           </div>
 
           {/* Instagram Caption */}
-          {contentStates.captions.instagram && (
+          {captions.instagram && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Instagram className="w-4 h-4" />
@@ -112,13 +138,13 @@ export const CaptionsMode: React.FC<CaptionsModeProps> = ({
                 <span className="text-xs text-gray-500">{PLATFORM_CONFIGS.instagram.maxChars} chars max, {PLATFORM_CONFIGS.instagram.description}</span>
               </div>
               <div className="p-4 border border-gray-200 rounded-lg bg-white">
-                <div className="text-sm text-gray-900 leading-relaxed">{contentStates.captions.instagram}</div>
+                <div className="text-sm text-gray-900 leading-relaxed">{captions.instagram}</div>
               </div>
             </div>
           )}
 
           {/* LinkedIn Caption */}
-          {contentStates.captions.linkedin && (
+          {captions.linkedin && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Linkedin className="w-4 h-4" />
@@ -126,13 +152,13 @@ export const CaptionsMode: React.FC<CaptionsModeProps> = ({
                 <span className="text-xs text-gray-500">{PLATFORM_CONFIGS.linkedin.maxChars} chars max, {PLATFORM_CONFIGS.linkedin.description}</span>
               </div>
               <div className="p-4 border border-gray-200 rounded-lg bg-white">
-                <div className="text-sm text-gray-900 leading-relaxed">{contentStates.captions.linkedin}</div>
+                <div className="text-sm text-gray-900 leading-relaxed">{captions.linkedin}</div>
               </div>
             </div>
           )}
 
           {/* X/Twitter Caption */}
-          {contentStates.captions.x && (
+          {captions.x && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Twitter className="w-4 h-4" />
@@ -140,13 +166,13 @@ export const CaptionsMode: React.FC<CaptionsModeProps> = ({
                 <span className="text-xs text-gray-500">{PLATFORM_CONFIGS.x.maxChars} chars max, {PLATFORM_CONFIGS.x.description}</span>
               </div>
               <div className="p-4 border border-gray-200 rounded-lg bg-white">
-                <div className="text-sm text-gray-900 leading-relaxed">{contentStates.captions.x}</div>
+                <div className="text-sm text-gray-900 leading-relaxed">{captions.x}</div>
               </div>
             </div>
           )}
 
           {/* TikTok Caption */}
-          {contentStates.captions.tiktok && (
+          {captions.tiktok && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-gray-600 rounded-sm" />
@@ -154,7 +180,7 @@ export const CaptionsMode: React.FC<CaptionsModeProps> = ({
                 <span className="text-xs text-gray-500">{PLATFORM_CONFIGS.tiktok.maxChars} chars max, {PLATFORM_CONFIGS.tiktok.description}</span>
               </div>
               <div className="p-4 border border-gray-200 rounded-lg bg-white">
-                <div className="text-sm text-gray-900 leading-relaxed">{contentStates.captions.tiktok}</div>
+                <div className="text-sm text-gray-900 leading-relaxed">{captions.tiktok}</div>
               </div>
             </div>
           )}

@@ -1,5 +1,6 @@
 import { useRef, useCallback } from 'react'
 import { ContentStates, GenerationStates } from '../types/noteEditor'
+import { aiService } from '@/services/aiService'
 
 // Visual notes timing constants
 const TYPING_ANIMATION_SPEED = 25    // 25ms between each character when typing visual notes
@@ -21,24 +22,11 @@ export const useVisualNotes = (
     setGenerationStates((prev) => ({ ...prev, visualNotes: true }))
     
     try {
-      const response = await fetch('/api/ai/visual-notes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ script: scriptContent }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        
-        if (data.enhancedScript) {
-          typeVisualNotesIntoScript(data.enhancedScript, scriptContent)
-        } else {
-          setGenerationStates((prev) => ({ ...prev, visualNotes: false }))
-        }
+      const enhancedScript = await aiService.generateVisualNotes(scriptContent)
+      
+      if (enhancedScript) {
+        typeVisualNotesIntoScript(enhancedScript, scriptContent)
       } else {
-        alert('Failed to generate visual notes. Please try again.')
         setGenerationStates((prev) => ({ ...prev, visualNotes: false }))
       }
     } catch (error) {

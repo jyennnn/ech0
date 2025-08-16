@@ -2,63 +2,39 @@
 
 import { useState, useEffect } from 'react'
 import { JournalEntry } from '@/types/database'
-import { createClient } from '@/utils/supabase/client'
-import { User } from '@supabase/supabase-js'
-import { redirect, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import NoteCard from '@/components/dashboard/NoteCard'
+import { Loading } from '@/components/ui/Loading'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { noteService } from '@/services/noteService'
+import { useAuth } from '@/hooks/useAuth'
+import { toast } from 'sonner'
 
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
   const [notesLoading, setNotesLoading] = useState(true)
   const [notes, setNotes] = useState<JournalEntry[]>([])
-  const supabase = createClient()
   const router = useRouter()
+  const { user, loading, isAuthenticated } = useAuth()
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session?.user) {
-        redirect('/login')
-        return
-      }
-      setUser(session.user)
-      setLoading(false)
+    if (isAuthenticated) {
       fetchEntries()
-    })
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (!session?.user) {
-          redirect('/login')
-          return
-        }
-        setUser(session.user)
-        setLoading(false)
-      }
-    )
-
-    return () => subscription.unsubscribe()
-  }, [])
+    }
+  }, [isAuthenticated])
 
   const fetchEntries = async () => {
     setNotesLoading(true)
-    const { data, error } = await supabase
-      .from('journal_entries')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Failed to fetch notes:', error)
-      setNotesLoading(false)
-      return
-    }
-
-    if (data) {
+    try {
+      const data = await noteService.fetchAllNotes()
       setNotes(data)
+    } catch (error) {
+      console.error('Failed to fetch notes:', error)
+      toast.error('Failed to load notes. Please try again.')
+    } finally {
+      setNotesLoading(false)
     }
-    setNotesLoading(false)
   }
 
 
@@ -66,25 +42,11 @@ export default function DashboardPage() {
     if (!user) return
 
     try {
-      const { data, error } = await supabase
-        .from('journal_entries')
-        .insert({
-          user_id: user.id,
-          type: 'idea',
-          title: '',
-          content: ''
-        })
-        .select()
-        .single()
-
-      if (error) {
-        console.error('Failed to create note:', error)
-        return
-      }
-
-      router.push(`/dashboard/note/${data.id}`)
+      const newNote = await noteService.createNote(user.id)
+      router.push(`/dashboard/note/${newNote.id}`)
     } catch (error) {
       console.error('Failed to create note:', error)
+      toast.error('Failed to create note. Please try again.')
     }
   }
 
@@ -93,15 +55,10 @@ export default function DashboardPage() {
   }
 
   if (loading || notesLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl text-foreground">Loading...</div>
-      </div>
-    )
+    return <Loading />
   }
 
   if (!user) {
-    redirect('/login')
     return null
   }
 
@@ -112,15 +69,13 @@ export default function DashboardPage() {
       {/* Simple Notes List */}
       <div className="px-4">
         {notes.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
-            <p className="mb-4">No notes yet.</p>
-            <button
-              onClick={handleCreateNote}
-              className="text-blue-500 hover:text-blue-600 text-sm"
-            >
-              Create your first note
-            </button>
-          </div>
+          <EmptyState
+            title="No notes yet."
+            action={{
+              label: "Create your first note",
+              onClick: handleCreateNote
+            }}
+          />
         ) : (
           <div className="space-y-3">
             {notes.map((note) => (

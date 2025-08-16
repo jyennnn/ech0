@@ -1,30 +1,62 @@
-import React from 'react'
+import React, { useState, useRef } from 'react'
 import { ChevronDown, Edit3, Camera } from 'lucide-react'
-import { ContentStates, GenerationStates } from '../../types/noteEditor'
+import { aiService } from '@/services/aiService'
+import { useVisualNotes } from '@/hooks/useVisualNotes'
+import { toast } from 'sonner'
 
 interface ScriptModeProps {
   title: string
   content: string
-  contentStates: ContentStates
-  generationStates: GenerationStates
-  showScriptMenu: boolean
-  onVideoTypeChange: (value: string) => void
-  onGenerateFirstDraft: () => void
-  onAddVisualNotes: () => void
-  onToggleScriptMenu: () => void
 }
 
 export const ScriptMode: React.FC<ScriptModeProps> = ({
   title,
   content,
-  contentStates,
-  generationStates,
-  showScriptMenu,
-  onVideoTypeChange,
-  onGenerateFirstDraft,
-  onAddVisualNotes,
-  onToggleScriptMenu,
 }) => {
+  // Local state for script functionality
+  const [script, setScript] = useState('')
+  const [videoType, setVideoType] = useState('30-45s instagram video, emotional and relatable script')
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [isGeneratingVisualNotes, setIsGeneratingVisualNotes] = useState(false)
+  const [showScriptMenu, setShowScriptMenu] = useState(false)
+  
+  const scriptTextareaRef = useRef<HTMLTextAreaElement>(null!)
+  
+  // Visual notes hook
+  const { addVisualNotes } = useVisualNotes(scriptTextareaRef, 
+    (newState) => setScript(prev => newState.script || prev), 
+    (genState) => setIsGeneratingVisualNotes(genState.visualNotes || false)
+  )
+
+  const generateScript = async () => {
+    const fullContent = (title.trim() ? title + '\n\n' + content : content).trim()
+    if (fullContent.length < 30) {
+      toast.error('Please write more content in notes mode before generating a script.')
+      return
+    }
+
+    setIsGenerating(true)
+    
+    try {
+      const generatedScript = await aiService.generateScript(fullContent, videoType)
+      setScript(generatedScript)
+      toast.success('Script generated successfully!')
+    } catch (error) {
+      console.error('Script generation failed:', error)
+      toast.error('Failed to generate script. Please try again.')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const handleAddVisualNotes = () => {
+    if (!script.trim()) {
+      toast.error('Generate a script first before adding visual notes.')
+      return
+    }
+    addVisualNotes(script)
+    setShowScriptMenu(false)
+  }
   return (
     <div className="px-4 pb-20">
       <div className="mb-6">
@@ -33,24 +65,24 @@ export const ScriptMode: React.FC<ScriptModeProps> = ({
           Examples: &quot;60s TikTok educational&quot;, &quot;30s Instagram emotional story&quot;, &quot;45s YouTube tutorial&quot;, &quot;30s LinkedIn professional tip&quot;
         </div>
         <textarea
-          value={contentStates.videoType}
-          onChange={(e) => onVideoTypeChange(e.target.value)}
+          value={videoType}
+          onChange={(e) => setVideoType(e.target.value)}
           placeholder="Describe your video: platform, duration, style..."
           className="w-full p-3 border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-gray-300 text-sm bg-white font-apple"
           rows={3}
         />
       </div>
 
-      {!contentStates.script && !generationStates.visualNotes ? (
+      {!script && !isGeneratingVisualNotes ? (
         // Create first draft button
         <div className="flex justify-center mb-8">
           <button
-            onClick={onGenerateFirstDraft}
-            disabled={generationStates.script || !title.trim() && !content.trim()}
+            onClick={generateScript}
+            disabled={isGenerating || (!title.trim() && !content.trim())}
             className="flex items-center gap-2 text-sm btn-primary"
           >
             <Edit3 className="w-4 h-4" />
-            {generationStates.script ? 'Creating...' : 'Create first draft'}
+            {isGenerating ? 'Creating...' : 'Create first draft'}
           </button>
         </div>
       ) : (
@@ -59,7 +91,7 @@ export const ScriptMode: React.FC<ScriptModeProps> = ({
           {/* Script Header with Dropdown */}
           <div className="mb-4 relative">
             <button
-              onClick={onToggleScriptMenu}
+              onClick={() => setShowScriptMenu(!showScriptMenu)}
               className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
             >
               First draft
@@ -83,10 +115,7 @@ export const ScriptMode: React.FC<ScriptModeProps> = ({
                 </button>
                 <hr className="my-1 border-gray-200" />
                 <button 
-                  onClick={() => {
-                    onAddVisualNotes()
-                    onToggleScriptMenu()
-                  }}
+                  onClick={handleAddVisualNotes}
                   className="w-full text-left px-4 py-2 text-sm text-purple-600 hover:bg-gray-50 flex items-center gap-2"
                 >
                   <Camera className="w-4 h-4" />
@@ -97,8 +126,11 @@ export const ScriptMode: React.FC<ScriptModeProps> = ({
           </div>
 
           {/* Script Content */}
-          <div className="text-gray-900 text-base leading-relaxed whitespace-pre-wrap">
-            {contentStates.script}
+          <div 
+            ref={scriptTextareaRef}
+            className="text-gray-900 text-base leading-relaxed whitespace-pre-wrap"
+          >
+            {script}
           </div>
         </div>
       )}
