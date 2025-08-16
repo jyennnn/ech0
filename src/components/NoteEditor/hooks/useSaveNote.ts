@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/utils/supabase/client'
+import { createClient } from '@/utils/supabase/client'
 import { SaveStatus, JournalEntry } from '../types'
 import { SAVE_DEBOUNCE_MS, MAX_RETRY_ATTEMPTS } from '../constants'
 
@@ -9,6 +9,7 @@ export const useSaveNote = (existingNote?: JournalEntry) => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const router = useRouter()
+  const supabase = createClient()
 
   const saveNote = useCallback(async (title: string, content: string, shouldRedirect = true, retryCount = 0) => {
     if (!existingNote || (!content.trim() && !title.trim())) return
