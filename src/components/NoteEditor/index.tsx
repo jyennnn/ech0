@@ -44,7 +44,7 @@ export default function NoteEditor({ user, existingNote }: NoteEditorProps) {
   })
 
   const router = useRouter()
-  const scriptTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const scriptTextareaRef = useRef<HTMLTextAreaElement>(null!);
   
   // Custom hooks
   const { saveStatus, hasUnsavedChanges, saveNote, forceSave, scheduleAutoSave } = useSaveNote(existingNote)
