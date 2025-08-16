@@ -1,7 +1,8 @@
-import { supabase } from '@/utils/supabase/client'
+import { createClient } from '@/utils/supabase/client'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function DELETE(request: NextRequest) {
+  const supabase = createClient()
 
   try {
     const body = await request.json()

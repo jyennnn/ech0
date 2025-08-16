@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
 import { redirect, useRouter } from 'next/navigation'
-import NotesList from '@/components/NotesList'
+import Header from '@/components/layout/Header'
+import NoteCard from '@/components/dashboard/NoteCard'
 
 interface JournalEntry {
   id: string
@@ -108,10 +109,33 @@ export default function DashboardPage() {
   }
 
   return (
-    <NotesList 
-      notes={notes}
-      onCreateNote={handleCreateNote}
-      onEditNote={handleEditNote}
-    />
+    <div>
+      <Header onCreateNote={handleCreateNote} />
+
+      {/* Simple Notes List */}
+      <div className="px-4">
+        {notes.length === 0 ? (
+          <div className="text-center py-16 text-gray-400">
+            <p className="mb-4">No notes yet.</p>
+            <button
+              onClick={handleCreateNote}
+              className="text-blue-500 hover:text-blue-600 text-sm"
+            >
+              Create your first note
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {notes.map((note) => (
+              <NoteCard
+                key={note.id}
+                note={note}
+                onClick={handleEditNote}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   )
 }

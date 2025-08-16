@@ -11,13 +11,14 @@ import { ScriptMode } from './modes/ScriptMode'
 import { CaptionsMode } from './modes/CaptionsMode'
 import { useSaveNote } from './hooks/useSaveNote'
 import { useVisualNotes } from './hooks/useVisualNotes'
-import { supabase } from '@/utils/supabase/client'
+import { createClient } from '@/utils/supabase/client'
 
 export default function NoteEditor({ user, existingNote }: NoteEditorProps) {
   // Core content state
   const [title, setTitle] = useState(existingNote?.title || '')
   const [content, setContent] = useState(existingNote?.content || '')
-  
+  const supabase = createClient()
+
   // UI state
   const [currentMode, setCurrentMode] = useState<Mode>('notes')
   const [showScriptMenu, setShowScriptMenu] = useState(false)
@@ -175,48 +176,63 @@ export default function NoteEditor({ user, existingNote }: NoteEditorProps) {
     }
   }
 
-  // Delete handler
-  const handleDeleteNote = async () => {
-    console.log('Delete button clicked', { existingNote })
-    
-    if (!existingNote?.id) {
-      console.log('No existing note ID found')
-      return
-    }
-    
-    if (!confirm('Are you sure you want to delete this note? This action cannot be undone.')) {
-      console.log('User cancelled deletion')
-      return
-    }
-
-    console.log('Attempting to delete note with ID:', existingNote.id)
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const response = await fetch('/api/note-delete', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({ id: existingNote.id }),
-      })
-
-      console.log('Delete response:', response.status, response.ok)
-
-      if (response.ok) {
-        console.log('Delete successful, navigating to home')
-        router.push('/')
-      } else {
-        const errorData = await response.json()
-        console.error('Delete failed:', errorData)
-        alert('Failed to delete note. Please try again.')
-      }
-    } catch (error) {
-      console.error('Delete failed:', error)
-      alert('Failed to delete note. Please try again.')
-    }
+ const handleDeleteNote = async () => {
+  if (!existingNote?.id) {
+    console.warn('No existing note ID found');
+    return;
   }
+
+  const ok = window.confirm(
+    'Are you sure you want to delete this note? This action cannot be undone.'
+  );
+  if (!ok) return;
+
+  try {
+    const { data: { session }, error: sessErr } = await supabase.auth.getSession();
+    if (sessErr) {
+      console.error('Session error:', sessErr);
+      alert('Please log in again.');
+      router.push('/login');
+      return;
+    }
+    const token = session?.access_token;
+    if (!token) {
+      alert('Please log in again.');
+      router.push('/login');
+      return;
+    }
+
+    const res = await fetch('/api/note-delete', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ id: existingNote.id }),
+    });
+
+    if (!res.ok) {
+      // Try to surface the real error from the API
+      let msg = 'Failed to delete note.';
+      try {
+        const err = await res.json();
+        msg = err?.error || JSON.stringify(err);
+      } catch {
+        msg = await res.text();
+      }
+      console.error('Delete failed:', res.status, msg);
+      alert('Failed to delete note. Please try again.');
+      return;
+    }
+
+    // Success
+    router.push('/');
+  } catch (e) {
+    console.error('Delete failed:', e);
+    alert('Failed to delete note. Please try again.');
+  }
+};
+
 
   // Menu handlers
   useEffect(() => {
