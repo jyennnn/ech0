@@ -16,8 +16,6 @@ import { toast } from 'sonner'
 export default function DashboardPage() {
   const [notesLoading, setNotesLoading] = useState(true)
   const [notes, setNotes] = useState<JournalEntry[]>([])
-  const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set())
-  const [isSelectionMode, setIsSelectionMode] = useState(false)
   const router = useRouter()
   const { user, loading, isAuthenticated } = useAuth()
 
@@ -77,6 +75,7 @@ export default function DashboardPage() {
       toast.success('Note deleted successfully!')
       fetchEntries()
     } catch (error) {
+      console.error(error)
       toast.error('Failed to delete note. Please try again.')
     }
   }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { motion } from "motion/react"
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Card, CardTitle, CardContent } from '@/components/ui/card'
 import { NoteCardProps } from '@/types/dashboard'
 import { Trash2 } from 'lucide-react'
 
@@ -16,7 +16,7 @@ export default function NoteCard({ note, onClick, onDelete }: SwipeableNoteCardP
     setIsDragging(true)
   }
 
-  const handleDragEnd = (_: any, info: { offset: { x: number } }) => {
+  const handleDragEnd = (_: unknown, info: { offset: { x: number } }) => {
     setIsDragging(false)
     
     if (info.offset.x < -100) {
