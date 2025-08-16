@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { JournalEntry } from '@/types/database'
 import { useParams, useRouter } from 'next/navigation'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -10,9 +10,9 @@ import { ScriptMode } from '@/components/noteEditor/ScriptMode'
 import { CaptionsMode } from '@/components/noteEditor/CaptionsMode'
 import { useSaveNote } from '@/hooks/useSaveNote'
 import { useAuth } from '@/hooks/useAuth'
-import { NoteActionsProvider } from '@/components/layout/NoteActionsProvider'
 import { noteService } from '@/services/noteService'
 import { authService } from '@/services/authService'
+import { useNoteActionsStore } from '@/stores/noteActionsStore'
 import { toast } from 'sonner'
 
 
@@ -26,6 +26,7 @@ export default function EditNotePage() {
   const router = useRouter()
   const noteId = params.id as string
   const { user, loading, isAuthenticated } = useAuth()
+  const { setNoteActions, clearNoteActions } = useNoteActionsStore()
 
   // Custom hooks
   const { saveStatus, hasUnsavedChanges, forceSave, scheduleAutoSave } = useSaveNote(note || undefined)
@@ -87,7 +88,6 @@ export default function EditNotePage() {
       const data = await noteService.fetchNote(noteId)
       setNote(data)
     } catch (error) {
-      console.error('Error fetching note:', error)
       router.push('/dashboard')
     } finally {
       setNoteLoading(false)
@@ -99,9 +99,8 @@ export default function EditNotePage() {
     setContent(value)
   }, [])
 
-  const handleDeleteNote = async () => {
+  const handleDeleteNote = useCallback(async () => {
     if (!note?.id) {
-      console.warn('No existing note ID found')
       return
     }
 
@@ -122,10 +121,41 @@ export default function EditNotePage() {
       toast.success('Note deleted successfully!')
       router.push('/dashboard')
     } catch (error) {
-      console.error('Delete failed:', error)
       toast.error('Failed to delete note. Please try again.')
     }
-  }
+  }, [note?.id, router])
+
+  // Register note actions with global store when note loads
+  useEffect(() => {
+    if (note?.id) {
+      // Register actions when note is available
+      setNoteActions({
+        onSave: forceSave,
+        onDelete: handleDeleteNote,
+        saveStatus,
+        title,
+        content
+      })
+    }
+
+    // Cleanup on unmount or when note changes
+    return () => {
+      clearNoteActions()
+    }
+  }, [note?.id]) // Only run when note ID changes
+
+  // Update actions when save status or content changes  
+  useEffect(() => {
+    if (note?.id) {
+      setNoteActions({
+        onSave: forceSave,
+        onDelete: handleDeleteNote,
+        saveStatus,
+        title,
+        content
+      })
+    }
+  }, [saveStatus, title, content]) // Update when these change
 
   if (loading || noteLoading) {
     return <Loading />
@@ -140,48 +170,37 @@ export default function EditNotePage() {
   }
 
   return (
-    <NoteActionsProvider
-      noteActions={{
-        onSave: forceSave,
-        onDelete: handleDeleteNote,
-        saveStatus,
-        title,
-        content
-      }}
-    >
-      {/* Tabs */}
-      <Tabs defaultValue="notes" className="flex-1">
-        <div className="px-4 py-2">
-          <TabsList>
-            <TabsTrigger value="notes">notes</TabsTrigger>
-            <TabsTrigger value="script">script</TabsTrigger>
-            <TabsTrigger value="captions">captions</TabsTrigger>
-          </TabsList>
-        </div>
+    <Tabs defaultValue="notes" className="flex-1">
+      <div className="px-4 py-2">
+        <TabsList>
+          <TabsTrigger value="notes">notes</TabsTrigger>
+          <TabsTrigger value="script">script</TabsTrigger>
+          <TabsTrigger value="captions">captions</TabsTrigger>
+        </TabsList>
+      </div>
 
-        <TabsContent value="notes">
-          <NotesMode
-            title={title}
-            content={content}
-            onTitleChange={setTitle}
-            onContentChange={handleContentChange}
-          />
-        </TabsContent>
+      <TabsContent value="notes">
+        <NotesMode
+          title={title}
+          content={content}
+          onTitleChange={setTitle}
+          onContentChange={handleContentChange}
+        />
+      </TabsContent>
 
-        <TabsContent value="script">
-          <ScriptMode
-            title={title}
-            content={content}
-          />
-        </TabsContent>
+      <TabsContent value="script">
+        <ScriptMode
+          title={title}
+          content={content}
+        />
+      </TabsContent>
 
-        <TabsContent value="captions">
-          <CaptionsMode
-            title={title}
-            content={content}
-          />
-        </TabsContent>
-      </Tabs>
-    </NoteActionsProvider>
+      <TabsContent value="captions">
+        <CaptionsMode
+          title={title}
+          content={content}
+        />
+      </TabsContent>
+    </Tabs>
   )
 }
