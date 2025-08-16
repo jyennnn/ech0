@@ -1,7 +1,8 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useCallback } from 'react'
 import { ChevronDown, Edit3, Camera } from 'lucide-react'
 import { aiService } from '@/services/aiService'
 import { useVisualNotes } from '@/hooks/useVisualNotes'
+import { ContentStates, GenerationStates } from '@/types/noteEditor'
 import { toast } from 'sonner'
 
 interface ScriptModeProps {
@@ -22,11 +23,30 @@ export const ScriptMode: React.FC<ScriptModeProps> = ({
   
   const scriptTextareaRef = useRef<HTMLTextAreaElement>(null!)
   
-  // Visual notes hook
-  const { addVisualNotes } = useVisualNotes(scriptTextareaRef, 
-    (newState) => setScript(prev => newState.script || prev), 
-    (genState) => setIsGeneratingVisualNotes(genState.visualNotes || false)
-  )
+  // Visual notes hook - create mock setters for compatibility
+  const mockSetContentStates = useCallback((updater: React.SetStateAction<ContentStates>) => {
+    if (typeof updater === 'function') {
+      const currentState: ContentStates = { script, videoType, captions: { instagram: '', linkedin: '', x: '', tiktok: '' } }
+      const newState = updater(currentState)
+      if (newState.script !== script) {
+        setScript(newState.script)
+      }
+    } else if (updater.script) {
+      setScript(updater.script)
+    }
+  }, [script, videoType])
+
+  const mockSetGenerationStates = useCallback((updater: React.SetStateAction<GenerationStates>) => {
+    if (typeof updater === 'function') {
+      const currentState: GenerationStates = { script: false, visualNotes: isGeneratingVisualNotes, captions: false }
+      const newState = updater(currentState)
+      setIsGeneratingVisualNotes(newState.visualNotes || false)
+    } else if (updater.visualNotes !== undefined) {
+      setIsGeneratingVisualNotes(updater.visualNotes)
+    }
+  }, [isGeneratingVisualNotes])
+
+  const { addVisualNotes } = useVisualNotes(scriptTextareaRef, mockSetContentStates, mockSetGenerationStates)
 
   const generateScript = async () => {
     const fullContent = (title.trim() ? title + '\n\n' + content : content).trim()
@@ -126,12 +146,13 @@ export const ScriptMode: React.FC<ScriptModeProps> = ({
           </div>
 
           {/* Script Content */}
-          <div 
+          <textarea 
             ref={scriptTextareaRef}
-            className="text-gray-900 text-base leading-relaxed whitespace-pre-wrap"
-          >
-            {script}
-          </div>
+            value={script}
+            onChange={(e) => setScript(e.target.value)}
+            className="w-full min-h-[60vh] p-0 border-none resize-none text-gray-900 text-base leading-relaxed whitespace-pre-wrap bg-transparent"
+            style={{ outline: 'none' }}
+          />
         </div>
       )}
     </div>
