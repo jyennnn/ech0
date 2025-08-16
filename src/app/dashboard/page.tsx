@@ -8,6 +8,7 @@ import NoteCard from '@/components/dashboard/NoteCard'
 import { Loading } from '@/components/ui/Loading'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { noteService } from '@/services/noteService'
+import { authService } from '@/services/authService'
 import { useAuth } from '@/hooks/useAuth'
 import { toast } from 'sonner'
 
@@ -54,6 +55,31 @@ export default function DashboardPage() {
     router.push(`/dashboard/note/${noteId}`)
   }
 
+  const handleDeleteNote = async (noteId: string) => {
+    const noteToDelete = notes.find(n => n.id === noteId)
+    const title = noteToDelete?.title || 'Untitled Note'
+    
+    if (!window.confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      const accessToken = await authService.getAccessToken()
+      if (!accessToken) {
+        toast.error('Please log in again.')
+        router.push('/login')
+        return
+      }
+
+      await noteService.deleteNote(noteId, accessToken)
+      toast.success('Note deleted successfully!')
+      fetchEntries()
+    } catch (error) {
+      console.error(error)
+      toast.error('Failed to delete note. Please try again.')
+    }
+  }
+
   if (loading || notesLoading) {
     return <Loading />
   }
@@ -83,6 +109,7 @@ export default function DashboardPage() {
                 key={note.id}
                 note={note}
                 onClick={handleEditNote}
+                onDelete={handleDeleteNote}
               />
             ))}
           </div>

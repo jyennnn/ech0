@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { JournalEntry } from '@/types/database'
 import { useParams, useRouter } from 'next/navigation'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -31,11 +31,26 @@ export default function EditNotePage() {
   // Custom hooks
   const { saveStatus, hasUnsavedChanges, forceSave, scheduleAutoSave } = useSaveNote(note || undefined)
 
+  const fetchNote = useCallback(async () => {
+    if (!noteId) return
+    
+    setNoteLoading(true)
+    try {
+      const data = await noteService.fetchNote(noteId)
+      setNote(data)
+    } catch (error) {
+      console.error(error)
+      router.push('/dashboard')
+    } finally {
+      setNoteLoading(false)
+    }
+  }, [noteId, router])
+
   useEffect(() => {
     if (isAuthenticated && noteId) {
       fetchNote()
     }
-  }, [isAuthenticated, noteId])
+  }, [isAuthenticated, noteId, fetchNote])
 
   // Update title and content when note is loaded
   useEffect(() => {
@@ -80,20 +95,6 @@ export default function EditNotePage() {
     }
   }, [hasUnsavedChanges, note, title, content, forceSave])
 
-  const fetchNote = async () => {
-    if (!noteId) return
-    
-    setNoteLoading(true)
-    try {
-      const data = await noteService.fetchNote(noteId)
-      setNote(data)
-    } catch (error) {
-      router.push('/dashboard')
-    } finally {
-      setNoteLoading(false)
-    }
-  }
-
   // Content change handlers
   const handleContentChange = useCallback((value: string) => {
     setContent(value)
@@ -121,14 +122,14 @@ export default function EditNotePage() {
       toast.success('Note deleted successfully!')
       router.push('/dashboard')
     } catch (error) {
+      console.error(error)
       toast.error('Failed to delete note. Please try again.')
     }
   }, [note?.id, router])
 
-  // Register note actions with global store when note loads
+  // Register and update note actions with global store
   useEffect(() => {
     if (note?.id) {
-      // Register actions when note is available
       setNoteActions({
         onSave: forceSave,
         onDelete: handleDeleteNote,
@@ -138,24 +139,11 @@ export default function EditNotePage() {
       })
     }
 
-    // Cleanup on unmount or when note changes
+    // Cleanup on unmount
     return () => {
       clearNoteActions()
     }
-  }, [note?.id]) // Only run when note ID changes
-
-  // Update actions when save status or content changes  
-  useEffect(() => {
-    if (note?.id) {
-      setNoteActions({
-        onSave: forceSave,
-        onDelete: handleDeleteNote,
-        saveStatus,
-        title,
-        content
-      })
-    }
-  }, [saveStatus, title, content]) // Update when these change
+  }, [note?.id, setNoteActions, forceSave, handleDeleteNote, saveStatus, title, content, clearNoteActions])
 
   if (loading || noteLoading) {
     return <Loading />

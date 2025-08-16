@@ -32,6 +32,7 @@ export const useSaveNote = (existingNote?: JournalEntry) => {
         router.push('/')
       }
     } catch (error) {
+      console.error(error)
       if (retryCount < MAX_RETRY_ATTEMPTS) {
         const delay = Math.pow(2, retryCount) * 1000
         setTimeout(() => saveNote(title, content, shouldRedirect, retryCount + 1), delay)
